@@ -1,6 +1,6 @@
 // 財布 SAIFU — オフラインでも開けるようにする小さな仕組み。
 // 自分のファイルはネットワーク優先、つながらないときだけ保存済みのものを出す。
-const VERSION = 'saifu-v1';
+const VERSION = 'saifu-v2';
 const SHELL = ['./', './index.html', './style.css', './app.js', './logic.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
