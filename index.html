@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#212529" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="財布">
+<meta name="description" content="今月あといくら使えるかが一目で分かる、ひとり用の金銭管理アプリ。データは端末の中だけに保存します。">
+<title>財布 SAIFU</title>
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1 class="app-title">財布<small>SAIFU</small></h1>
+    <p class="app-date" id="today-label"></p>
+  </header>
+
+  <main>
+    <!-- ===== 記録 ===== -->
+    <section class="screen" id="screen-record" aria-labelledby="record-title">
+      <h2 class="visually-hidden" id="record-title">記録</h2>
+      <div class="strip" id="strip">
+        <p><span class="strip-label">今月あと</span><span class="strip-amount num" id="strip-amount">¥0</span></p>
+        <p class="strip-hint" id="strip-hint"></p>
+      </div>
+
+      <form class="form" id="form-record" novalidate>
+        <div class="field">
+          <span class="label" id="type-label">種別</span>
+          <div class="segment" role="radiogroup" aria-labelledby="type-label">
+            <label><input type="radio" name="type" value="expense" checked><span>支出</span></label>
+            <label><input type="radio" name="type" value="income"><span>収入</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="amount">金額<span class="req">（必須）</span></label>
+          <div class="amount-wrap">
+            <span class="yen" aria-hidden="true">¥</span>
+            <input class="input amount num" id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="amount-error">
+          </div>
+          <span class="field-error" id="amount-error" role="alert"></span>
+        </div>
+        <div class="field">
+          <label for="memo">メモ</label>
+          <input class="input" id="memo" name="memo" type="text" autocomplete="off" placeholder="例: コンビニ、タクシー、ゴルフ" aria-describedby="memo-hint" maxlength="60">
+          <span class="field-hint" id="memo-hint">書くと分類を自動で選びます。</span>
+        </div>
+        <div class="field">
+          <span class="label" id="cat-label">分類</span>
+          <div class="chips" id="chips" role="radiogroup" aria-labelledby="cat-label"></div>
+        </div>
+        <div class="field">
+          <label for="date">日付</label>
+          <input class="input" id="date" name="date" type="date" required>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">記録する</button>
+      </form>
+    </section>
+
+    <!-- ===== 今月 ===== -->
+    <section class="screen" id="screen-month" aria-labelledby="month-title" hidden>
+      <div class="month-nav">
+        <button class="btn btn-tertiary" type="button" id="month-prev" aria-label="前の月"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <h2 id="month-title">2026年9月</h2>
+        <button class="btn btn-tertiary" type="button" id="month-next" aria-label="次の月"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <p id="month-current-wrap" hidden><button class="btn btn-tertiary btn-sm to-current" type="button" id="month-current">今月に戻る</button></p>
+
+      <div class="hero">
+        <p class="hero-label" id="hero-label">のこり</p>
+        <p class="hero-amount num" id="hero-amount">¥0</p>
+        <p class="hero-guide" id="hero-guide"></p>
+        <dl class="figures">
+          <div><dt>予算</dt><dd class="num" id="fig-budget">¥0</dd></div>
+          <div><dt>使った</dt><dd class="num" id="fig-spent">¥0</dd></div>
+          <div><dt>収入</dt><dd class="num" id="fig-income">¥0</dd></div>
+        </dl>
+      </div>
+
+      <section aria-labelledby="pace-title">
+        <h3 class="section-title" id="pace-title">使うペース</h3>
+        <div id="chart-wrap"></div>
+        <p class="chart-caption" id="chart-caption">実線は日ごとの累計、点線は予算を月末まで均等に使ったときの線です。日付が先の記録は線に含みません。</p>
+      </section>
+
+      <section aria-labelledby="cat-title">
+        <h3 class="section-title" id="cat-title">分類ごと</h3>
+        <ul class="cats" id="cats"></ul>
+      </section>
+
+      <section aria-labelledby="recent-title">
+        <div class="section-head">
+          <h3 class="section-title" id="recent-title">最近の記録</h3>
+          <button class="link" type="button" id="to-history">すべて見る</button>
+        </div>
+        <div id="recent"></div>
+      </section>
+    </section>
+
+    <!-- ===== 履歴 ===== -->
+    <section class="screen" id="screen-history" aria-labelledby="history-title" hidden>
+      <div class="month-nav">
+        <button class="btn btn-tertiary" type="button" id="hist-prev" aria-label="前の月"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <h2 id="history-title">2026年9月</h2>
+        <button class="btn btn-tertiary" type="button" id="hist-next" aria-label="次の月"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <div class="field">
+        <label for="search">絞り込み</label>
+        <input class="input" id="search" type="search" placeholder="メモや分類の言葉" autocomplete="off">
+      </div>
+      <p class="summary-line" id="history-summary"></p>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- ===== 設定 ===== -->
+    <section class="screen" id="screen-settings" aria-labelledby="settings-title" hidden>
+      <h2 class="screen-title" id="settings-title">設定</h2>
+
+      <section class="settings-section" aria-labelledby="budget-title">
+        <h3 class="section-title" id="budget-title">月の予算</h3>
+        <form class="form" id="form-budget" novalidate>
+          <div class="field">
+            <label for="budget">1か月に使ってよい金額</label>
+            <div class="amount-wrap">
+              <span class="yen" aria-hidden="true">¥</span>
+              <input class="input amount num" id="budget" type="text" inputmode="numeric" autocomplete="off" aria-describedby="budget-error">
+            </div>
+            <span class="field-error" id="budget-error" role="alert"></span>
+          </div>
+          <button class="btn btn-primary" type="submit">予算を保存する</button>
+        </form>
+      </section>
+
+      <section class="settings-section" aria-labelledby="rec-title">
+        <h3 class="section-title" id="rec-title">固定費</h3>
+        <p class="help">家賃や通信費など毎月決まって出るお金です。月が変わると自動で記録に入り、その月の残りからすぐに引かれます。</p>
+        <ul class="rec-list" id="rec-list"></ul>
+        <form class="form" id="form-rec" novalidate>
+          <div class="row-2">
+            <div class="field">
+              <label for="rec-name">名前<span class="req">（必須）</span></label>
+              <input class="input" id="rec-name" type="text" placeholder="例: 家賃" maxlength="40" aria-describedby="rec-error">
+            </div>
+            <div class="field">
+              <label for="rec-amount">金額<span class="req">（必須）</span></label>
+              <input class="input num" id="rec-amount" type="text" inputmode="numeric" placeholder="例: 80000">
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label for="rec-day">毎月の日にち</label>
+              <input class="input num" id="rec-day" type="number" inputmode="numeric" min="1" max="31" value="1">
+            </div>
+            <div class="field">
+              <label for="rec-category">分類</label>
+              <select class="input" id="rec-category"></select>
+            </div>
+          </div>
+          <span class="field-error" id="rec-error" role="alert"></span>
+          <button class="btn btn-secondary" type="submit">固定費を追加する</button>
+        </form>
+      </section>
+
+      <section class="settings-section" aria-labelledby="data-title">
+        <h3 class="section-title" id="data-title">データ</h3>
+        <p class="help">記録はこの端末の中だけに保存されます。機種変更やブラウザの初期化の前に、書き出しで控えを取ってください。</p>
+        <div class="actions" style="margin-top: var(--space-4)">
+          <button class="btn btn-secondary" type="button" id="export-json">控えを書き出す（JSON）</button>
+          <button class="btn btn-secondary" type="button" id="export-csv">表計算用に書き出す（CSV）</button>
+          <button class="btn btn-secondary" type="button" id="import-btn">控えから読み込む</button>
+          <input type="file" id="import-file" accept="application/json,.json" class="visually-hidden" tabindex="-1">
+        </div>
+        <div class="actions" style="margin-top: var(--space-6)">
+          <button class="btn btn-danger" type="button" id="wipe">すべての記録を削除する</button>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="about-title">
+        <h3 class="section-title" id="about-title">このアプリについて</h3>
+        <p class="about"><strong>財布 SAIFU</strong> はひとり用の金銭管理アプリです。通信もアカウントも使いません。ホーム画面に追加すると、アプリのように開けます。一日の区切りは朝7時です（深夜の買い物は前日の記録になります）。</p>
+      </section>
+    </section>
+  </main>
+</div>
+
+<nav class="nav" aria-label="画面の切り替え">
+  <ul>
+    <li><button type="button" data-screen="record" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>記録</button></li>
+    <li><button type="button" data-screen="month"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>今月</button></li>
+    <li><button type="button" data-screen="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>履歴</button></li>
+    <li><button type="button" data-screen="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button></li>
+  </ul>
+</nav>
+
+<!-- 編集シート -->
+<dialog id="edit-dialog" aria-labelledby="edit-title">
+  <form class="dialog-body form" id="form-edit" method="dialog" novalidate>
+    <h2 class="dialog-title" id="edit-title">記録を直す</h2>
+    <div class="field">
+      <span class="label" id="e-type-label">種別</span>
+      <div class="segment" role="radiogroup" aria-labelledby="e-type-label">
+        <label><input type="radio" name="e-type" value="expense"><span>支出</span></label>
+        <label><input type="radio" name="e-type" value="income"><span>収入</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="e-amount">金額<span class="req">（必須）</span></label>
+      <div class="amount-wrap">
+        <span class="yen" aria-hidden="true">¥</span>
+        <input class="input amount num" id="e-amount" type="text" inputmode="numeric" autocomplete="off" aria-describedby="e-amount-error">
+      </div>
+      <span class="field-error" id="e-amount-error" role="alert"></span>
+    </div>
+    <div class="field">
+      <label for="e-memo">メモ</label>
+      <input class="input" id="e-memo" type="text" autocomplete="off" maxlength="60">
+    </div>
+    <div class="field">
+      <span class="label" id="e-cat-label">分類</span>
+      <div class="chips" id="e-chips" role="radiogroup" aria-labelledby="e-cat-label"></div>
+    </div>
+    <div class="field">
+      <label for="e-date">日付</label>
+      <input class="input" id="e-date" type="date" required>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-primary" type="submit" value="save">保存する</button>
+      <button class="btn btn-danger" type="button" id="edit-delete">この記録を削除する</button>
+      <button class="btn btn-tertiary" type="button" id="edit-close">閉じる</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 確認 -->
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+  <div class="dialog-body">
+    <h2 class="dialog-title" id="confirm-title"></h2>
+    <p class="help" id="confirm-body"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-danger" type="button" id="confirm-ok"></button>
+      <button class="btn btn-tertiary" type="button" id="confirm-cancel">やめる</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-text"></span><button class="btn" type="button" id="toast-action" hidden></button></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
